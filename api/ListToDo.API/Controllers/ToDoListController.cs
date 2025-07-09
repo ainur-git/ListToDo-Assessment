@@ -33,6 +33,13 @@ namespace ListToDo.API.Controllers
             return Ok(list);
         }
 
+        [HttpGet("search")]
+        public async Task<ActionResult<ToDoListReadDto>> GetItemByTitle([FromQuery] string title)
+        {
+            var res = await _toDoListServices.GetItemByTitle(title);
+            return Ok(res);
+        }
+
         [HttpPost]
         public async Task<ActionResult<ToDoListReadDto>> CreateItem(ToDoListCreateDto dto)
         {

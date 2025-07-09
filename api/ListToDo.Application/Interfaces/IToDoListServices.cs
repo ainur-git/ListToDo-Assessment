@@ -12,6 +12,7 @@ namespace ListToDo.Application.Interfaces
     {
         Task<IEnumerable<ToDoListReadDto>> GetAllItemAsync();
         Task<ToDoListReadDto> GetItemByIdAsync(int id);
+        Task<IEnumerable<ToDoListReadDto>> GetItemByTitle(string title);
         Task<ToDoListReadDto> CreateItemAsync(ToDoListCreateDto dto);
         Task<bool> UpdateItemAsync(int id, ToDoListCreateDto dto);
         Task<bool> DeleteItemAsync(int id);

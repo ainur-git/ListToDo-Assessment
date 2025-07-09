@@ -66,6 +66,15 @@ namespace ListToDo.Application.Services
             return list == null ? null : MapToReadDto(list);
         }
 
+        public async Task<IEnumerable<ToDoListReadDto>> GetItemByTitle(string title)
+        {
+            var res = await _context.ToDoLists
+                .Where(l => l.Title.Contains(title)).ToListAsync();
+
+            return res.Select(MapToReadDto);
+        }
+
+
         public async Task<ToDoListReadDto> CreateItemAsync(ToDoListCreateDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Title))

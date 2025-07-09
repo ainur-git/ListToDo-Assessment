@@ -2,6 +2,9 @@ using ListToDo.Application.Interfaces;
 using ListToDo.Application.Services;
 using ListToDo.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +21,7 @@ builder.Services.AddCors(options =>
         policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IToDoItemServices, ToDoItemServices>();
