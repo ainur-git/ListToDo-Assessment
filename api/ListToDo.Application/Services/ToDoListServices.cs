@@ -1,6 +1,7 @@
 ﻿using ListToDo.Application.Interfaces;
 using ListToDo.Core.Entities;
 using ListToDo.Infrastructure.Data;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -20,60 +21,36 @@ namespace ListToDo.Application.Services
             _context = context;
         }
 
-        public ToDoList MapToEntity(ToDoListCreateDto dto)
-        {
-            return new ToDoList
-            {
-                Title = dto.Title,
-                Description = dto.Description
-            };
-        }
-
-        public ToDoListReadDto MapToReadDto(ToDoList entity)
-        {
-            return new ToDoListReadDto
-            {
-                ListToDoId = entity.ListToDoId,
-                Title = entity.Title,
-                Description = entity.Description,
-                Items = entity.Items?.Select(item => new ToDoItemReadDto
-                {
-                    ItemToDoId = item.ItemToDoId,
-                    ListToDoId = item.ListToDoId,
-                    Title = item.Title,
-                    Description = item.Description,
-                    DueDate = item.DueDate,
-                    IsCompleted = item.IsCompleted
-                }).ToList() ?? new List<ToDoItemReadDto>()
-            };
-        }
-
         public async Task<IEnumerable<ToDoListReadDto>> GetAllItemAsync()
         {
             var lists = await _context.ToDoLists
                 .Include(l => l.Items)
                 .ToListAsync();
 
-            return lists.Select(MapToReadDto);
+            return lists.Adapt<List<ToDoListReadDto>>();
         }
-
+                                                                                    
         public async Task<ToDoListReadDto?> GetItemByIdAsync(int id)
         {
             var list = await _context.ToDoLists
                 .Include(l => l.Items)
                 .FirstOrDefaultAsync(l => l.ListToDoId == id);
 
-            return list == null ? null : MapToReadDto(list);
+            return list.Adapt<ToDoListReadDto>();
         }
 
         public async Task<IEnumerable<ToDoListReadDto>> GetItemByTitle(string title)
         {
+            if (string.IsNullOrWhiteSpace(title))
+                return Enumerable.Empty<ToDoListReadDto>();
+
             var res = await _context.ToDoLists
-                .Where(l => l.Title.Contains(title)).ToListAsync();
+                .Include(l => l.Items) // Ensure nested items are loaded
+                .Where(l => EF.Functions.Like(l.Title.ToLower(), $"%{title.ToLower()}%")) // More efficient & SQL-compatible
+                .ToListAsync();
 
-            return res.Select(MapToReadDto);
+            return res.Adapt<List<ToDoListReadDto>>();
         }
-
 
         public async Task<ToDoListReadDto> CreateItemAsync(ToDoListCreateDto dto)
         {
@@ -82,11 +59,11 @@ namespace ListToDo.Application.Services
                 throw new ArgumentException("Title cannot be empty.");
             }
 
-            var entity = MapToEntity(dto);
+            var entity = dto.Adapt<ToDoList>();
             _context.ToDoLists.Add(entity);
             await _context.SaveChangesAsync();
 
-            return MapToReadDto(entity);
+            return entity.Adapt<ToDoListReadDto>();
         }
 
         public async Task<bool> UpdateItemAsync(int id, ToDoListCreateDto dto)
@@ -99,8 +76,7 @@ namespace ListToDo.Application.Services
                 throw new ArgumentException("Title cannot be empty.");
             }
 
-            entity.Title = dto.Title;
-            entity.Description = dto.Description;
+            dto.Adapt<ToDoList>();
 
             _context.ToDoLists.Update(entity);
             await _context.SaveChangesAsync();

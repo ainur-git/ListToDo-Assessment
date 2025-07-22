@@ -1,6 +1,8 @@
-﻿using ListToDo.Application.Interfaces;
+﻿using ListToDo.Application.DTO;
+using ListToDo.Application.Interfaces;
 using ListToDo.Core.Entities;
 using ListToDo.Infrastructure.Data;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -20,42 +22,19 @@ namespace ListToDo.Application.Services
             _context = context;
         }
 
-        public ToDoItem MapToEntity(ToDoItemCreateDto dto)
-        {
-            return new ToDoItem
-            {
-                ListToDoId = dto.ListToDoId,
-                Title = dto.Title,
-                Description = dto.Description,
-                DueDate = dto.DueDate,
-                IsCompleted = dto.IsCompleted
-            };
-        }
-
-        public ToDoItemReadDto MapToReadDto(ToDoItem entity)
-        {
-            return new ToDoItemReadDto
-            {
-                ItemToDoId = entity.ItemToDoId,
-                ListToDoId = entity.ListToDoId,
-                Title = entity.Title,
-                Description = entity.Description,
-                DueDate = entity.DueDate,
-                IsCompleted = entity.IsCompleted
-            };
-        }
-
         public async Task<IEnumerable<ToDoItemReadDto>> GetAllItemAsync()
         {
             var entities = await _context.ToDoItems.ToListAsync();
-            return entities.Select(MapToReadDto);
+            return entities.Adapt<List<ToDoItemReadDto>>();
         }
 
         public async Task<ToDoItemReadDto> GetItemByIdAsync(int id)
         {
             var entity = await _context.ToDoItems.FindAsync(id);
             if (entity == null) return null;
-            return MapToReadDto(entity);
+            {
+                return entity.Adapt<ToDoItemReadDto>();
+            }
         }
 
         public async Task<ToDoItemReadDto> CreateItemAsync(ToDoItemCreateDto dto)
@@ -65,12 +44,12 @@ namespace ListToDo.Application.Services
                 throw new ArgumentException("Title cannot be empty");
             }
 
-            var entity = MapToEntity(dto);
+            var entity = dto.Adapt<ToDoItem>();
 
             _context.ToDoItems.Add(entity);
             await _context.SaveChangesAsync();
 
-            return MapToReadDto(entity);
+            return entity.Adapt<ToDoItemReadDto>();
         }
 
         public async Task<bool> UpdateItemAsync(int id, ToDoItemCreateDto dto)
@@ -84,11 +63,7 @@ namespace ListToDo.Application.Services
             }
 
             // Update properties
-            entity.Title = dto.Title;
-            entity.Description = dto.Description;
-            entity.DueDate = dto.DueDate;
-            entity.IsCompleted = dto.IsCompleted;
-            entity.ListToDoId = dto.ListToDoId;
+            dto.Adapt(entity);
 
             _context.ToDoItems.Update(entity);
             await _context.SaveChangesAsync();
