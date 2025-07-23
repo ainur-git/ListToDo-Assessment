@@ -1,4 +1,5 @@
-﻿using ListToDo.Application.DTO;
+﻿using Asp.Versioning;
+using ListToDo.Application.DTO;
 using ListToDo.Application.Interfaces;
 using ListToDo.Core.Entities;
 using ListToDo.Infrastructure;
@@ -8,8 +9,9 @@ using static ListToDo.Application.DTO.ItemDto;
 
 namespace ListToDo.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [ApiVersion("1.0")]
+    [Route("api/[controller]")]
     public class ToDoItemController : ControllerBase
     {
         private readonly IToDoItemServices _toDoItemServices;
@@ -18,6 +20,9 @@ namespace ListToDo.API.Controllers
         {
             this._toDoItemServices = toDoItemServices;
         }
+
+        [HttpGet("info")]
+        public IActionResult GetInfo() => Ok("This is ItemController v1.0");
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ToDoItemReadDto>>> GetAllResult()
