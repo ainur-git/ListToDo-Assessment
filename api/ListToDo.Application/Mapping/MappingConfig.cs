@@ -21,6 +21,7 @@ namespace ListToDo.Application.Mapping
 
             config.NewConfig<ListDto.ToDoListCreateDto, ToDoList>();
             config.NewConfig<ToDoList, ListDto.ToDoListReadDto>();
+
         }
     }
 }

@@ -2,13 +2,15 @@
 using ListToDo.Core.Entities;
 using ListToDo.Infrastructure.Data;
 using Mapster;
+using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static ListToDo.Application.DTO.ItemDto;
 using static ListToDo.Application.DTO.ListDto;
 
 namespace ListToDo.Application.Services
@@ -16,7 +18,7 @@ namespace ListToDo.Application.Services
     public class ToDoListServices : IToDoListServices 
     {
         private readonly ToDoDbContext _context;
-        public ToDoListServices(ToDoDbContext context)
+        public ToDoListServices(ToDoDbContext context) 
         {
             _context = context;
         }
@@ -26,7 +28,6 @@ namespace ListToDo.Application.Services
             var lists = await _context.ToDoLists
                 .Include(l => l.Items)
                 .ToListAsync();
-
             return lists.Adapt<List<ToDoListReadDto>>();
         }
                                                                                     
@@ -66,28 +67,58 @@ namespace ListToDo.Application.Services
             return entity.Adapt<ToDoListReadDto>();
         }
 
-        public async Task<bool> UpdateItemAsync(int id, ToDoListCreateDto dto)
+        public async Task<ToDoListReadDto> UpdateItemAsync(int id, [FromBody] ToDoListUpdateDto dto)
         {
             var entity = await _context.ToDoLists.FindAsync(id);
-            if (entity == null) return false;
+            if (entity == null)
+            {
+                throw new ArgumentException($"No To-Do List with ID{id}");
+            }
 
             if (string.IsNullOrWhiteSpace(dto.Title))
             {
                 throw new ArgumentException("Title cannot be empty.");
             }
 
-            dto.Adapt<ToDoList>();
+            dto.Adapt(entity);
 
             _context.ToDoLists.Update(entity);
             await _context.SaveChangesAsync();
 
-            return true;
+            return entity.Adapt<ToDoListReadDto>();
+        }
+
+        public async Task<ToDoListReadDto> PatchItemAsync(int id, JsonPatchDocument<ToDoListUpdateDto> patchDoc)
+        {
+            var entity = await _context.ToDoLists.FindAsync(id);
+            if (entity == null)
+            {
+                throw new ArgumentException($"No To-Do List with ID{id}");
+            }
+
+            var dto = entity.Adapt<ToDoListUpdateDto>();
+            patchDoc.ApplyTo(dto);
+
+            if (string.IsNullOrWhiteSpace(dto.Title))
+            {
+                throw new ArgumentException("Title cannot be empty.");
+            }
+
+            dto.Adapt(entity);
+
+            _context.ToDoLists.Update(entity);
+            await _context.SaveChangesAsync();
+
+            return entity.Adapt<ToDoListReadDto>();
         }
 
         public async Task<bool> DeleteItemAsync(int id)
         {
             var entity = await _context.ToDoLists.FindAsync(id);
-            if (entity == null) return false;
+            if (entity == null)
+            {
+                throw new ArgumentException($"No To-Do List with ID{id}");
+            }
 
             _context.ToDoLists.Remove(entity);
             await _context.SaveChangesAsync();

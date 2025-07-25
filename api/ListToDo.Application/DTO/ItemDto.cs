@@ -30,5 +30,16 @@ namespace ListToDo.Application.DTO
             public DateTime? DueDate { get; set; }
             public bool IsCompleted { get; set; }
         }
+
+        public class ToDoItemUpdateDto
+        {
+            public int ListToDoId { get; set; }
+            public string Title { get; set; }
+            public string Description { get; set; }
+            [Required]
+            public DateTime? DueDate { get; set; }
+            [Required]
+            public bool IsCompleted { get; set; }
+        }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using ListToDo.Core.Entities;
+using Microsoft.AspNetCore.JsonPatch;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,8 @@ namespace ListToDo.Application.Interfaces
         Task<IEnumerable<ToDoItemReadDto>> GetAllItemAsync();
         Task<ToDoItemReadDto> GetItemByIdAsync(int id);
         Task<ToDoItemReadDto> CreateItemAsync(ToDoItemCreateDto dto);
-        Task<bool> UpdateItemAsync(int id, ToDoItemCreateDto dto);
+        Task<ToDoItemReadDto> UpdateItemAsync(int id, ToDoItemUpdateDto dto);
+        Task<ToDoItemReadDto> PatchItemAsync(int id, JsonPatchDocument<ToDoItemUpdateDto> patchDoc);
         Task<bool> DeleteItemAsync(int id);
         Task<bool> CompleteAsync(int id);
 

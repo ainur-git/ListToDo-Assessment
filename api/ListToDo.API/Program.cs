@@ -1,4 +1,4 @@
-using ListToDo.Application.Interfaces;
+﻿using ListToDo.Application.Interfaces;
 using ListToDo.Application.Services;
 using ListToDo.Infrastructure.Data;
 using ListToDo.Application.Mapping;
@@ -7,25 +7,37 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Mapster;
+using Serilog;
 using System;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+// 👇 Replace default logging with Serilog
+builder.Host.UseSerilog();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    });
+    })
+    .AddNewtonsoftJson(); // NOT System.Text.Json
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
         policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
+builder.Services.AddSingleton<ProblemDetailsFactory, CustomProblemDetailsFactory>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
@@ -81,6 +93,30 @@ app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+app.UseExceptionHandler("/error");
+
+app.Map("/error", (HttpContext httpContext, ProblemDetailsFactory factory, ILogger<Program> logger) =>
+{
+    var exception = httpContext.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+    var statusCode = exception switch
+    {
+        ArgumentException => StatusCodes.Status400BadRequest,
+        UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+        _ => StatusCodes.Status500InternalServerError
+    };
+
+    var problem = factory.CreateProblemDetails(
+        httpContext,
+        statusCode: statusCode,
+        detail: exception?.Message
+    );
+
+    return Results.Problem(problem.Detail, statusCode: problem.Status, title: problem.Title);
+});
+
+app.MapControllers();
 
 app.MapControllers();
 

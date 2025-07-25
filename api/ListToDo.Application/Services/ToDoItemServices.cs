@@ -3,6 +3,7 @@ using ListToDo.Application.Interfaces;
 using ListToDo.Core.Entities;
 using ListToDo.Infrastructure.Data;
 using Mapster;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static ListToDo.Application.DTO.ItemDto;
+using static ListToDo.Application.DTO.ListDto;
 
 namespace ListToDo.Application.Services
 {
@@ -52,10 +54,13 @@ namespace ListToDo.Application.Services
             return entity.Adapt<ToDoItemReadDto>();
         }
 
-        public async Task<bool> UpdateItemAsync(int id, ToDoItemCreateDto dto)
+        public async Task<ToDoItemReadDto> UpdateItemAsync(int id, ToDoItemUpdateDto dto)
         {
             var entity = await _context.ToDoItems.FindAsync(id);
-            if (entity == null) return false;
+            if (entity == null)
+            {
+                throw new ArgumentException($"No item List with ID{id}");
+            }
 
             if (string.IsNullOrWhiteSpace(dto.Title))
             {
@@ -68,13 +73,40 @@ namespace ListToDo.Application.Services
             _context.ToDoItems.Update(entity);
             await _context.SaveChangesAsync();
 
-            return true;
+            return entity.Adapt<ToDoItemReadDto>();
+        }
+
+        public async Task<ToDoItemReadDto> PatchItemAsync(int id, JsonPatchDocument<ToDoItemUpdateDto> patchDoc)
+        {
+            var entity = await _context.ToDoItems.FindAsync(id);
+            if (entity == null)
+            {
+                throw new ArgumentException($"No item with ID{id}");
+            }
+            var dto = entity.Adapt<ToDoItemUpdateDto>();
+            patchDoc.ApplyTo(dto);
+
+            if (string.IsNullOrWhiteSpace(dto.Title))
+            {
+                throw new ArgumentException("Title cannot be empty");
+            }
+
+            // Update properties
+            dto.Adapt(entity);
+
+            _context.ToDoItems.Update(entity);
+            await _context.SaveChangesAsync();
+
+            return entity.Adapt<ToDoItemReadDto>();
         }
 
         public async Task<bool> DeleteItemAsync(int id)
         {
             var entity = await _context.ToDoItems.FindAsync(id);
-            if (entity == null) return false;
+            if (entity == null)
+            {
+                throw new ArgumentException($"No To-Do List with ID{id}");
+            }
 
             _context.ToDoItems.Remove(entity);
             await _context.SaveChangesAsync();

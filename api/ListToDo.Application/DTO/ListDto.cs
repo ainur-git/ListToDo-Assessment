@@ -25,5 +25,11 @@ namespace ListToDo.Application.DTO
 
             public List<ToDoItemReadDto> Items { get; set; } = new();// to read the item too
         }
+
+        public class ToDoListUpdateDto
+        {
+            public string Title { get; set; }
+            public string Description { get; set; }
+        }
     }
 }

@@ -4,8 +4,11 @@ using ListToDo.Application.Interfaces;
 using ListToDo.Core.Entities;
 using ListToDo.Infrastructure;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using static ListToDo.Application.DTO.ItemDto;
+using static ListToDo.Application.DTO.ListDto;
 
 namespace ListToDo.API.Controllers
 {
@@ -15,10 +18,12 @@ namespace ListToDo.API.Controllers
     public class ToDoItemController : ControllerBase
     {
         private readonly IToDoItemServices _toDoItemServices;
+        private readonly ILogger<ToDoItemController> _logger;
 
-        public ToDoItemController(IToDoItemServices toDoItemServices) 
+        public ToDoItemController(IToDoItemServices toDoItemServices, ILogger<ToDoItemController> logger) 
         {
             this._toDoItemServices = toDoItemServices;
+            this._logger = logger;
         }
 
         [HttpGet("info")]
@@ -27,61 +32,66 @@ namespace ListToDo.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ToDoItemReadDto>>> GetAllResult()
         {
-            var response = await _toDoItemServices.GetAllItemAsync();
-            return Ok(response);
+            _logger.LogInformation("Fetching all item in To-Do List");
+            var items = await _toDoItemServices.GetAllItemAsync();
+            if (items == null || items.Count() == 0)
+            {
+                throw new Exception("No items found in the database.");
+            }
+            _logger.LogInformation("Successfully fetch all item");
+            return Ok(items);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<ToDoItemReadDto>> GetItemById(int id)
         {
+            _logger.LogInformation("Fetching item from ToDo List");
             var item = await _toDoItemServices.GetItemByIdAsync(id);
             if (item == null)
             {
-                return NotFound();
+                throw new Exception($"No items found with ID{id}.");
             }
+            _logger.LogInformation($"Successfully fetched ID:{id} irems");
             return Ok(item);
         }
 
         [HttpPost]
         public async Task<ActionResult<ToDoItemReadDto>> CreateItem(ToDoItemCreateDto dto)
         {
-            try
-            {
-                var createdItem = await _toDoItemServices.CreateItemAsync(dto);
-                return CreatedAtAction(nameof(GetItemById), new { id = createdItem.ItemToDoId }, createdItem);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            _logger.LogInformation("Creating new item");
+            var createdItem = await _toDoItemServices.CreateItemAsync(dto);
+            _logger.LogInformation("Successfully creating new item");
+            return CreatedAtAction(nameof(GetItemById), new { id = createdItem.ItemToDoId }, createdItem);
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult> UpdateItem(int id, ToDoItemCreateDto dto)
+        public async Task<ActionResult> UpdateItem(int id, ToDoItemUpdateDto dto)
         {
-            if (id <= 0)
-            {
-                return BadRequest("Invalid ID");
-            }
+            _logger.LogInformation("Updating the item");
+            var updated = await _toDoItemServices.UpdateItemAsync(id, dto);
+            _logger.LogInformation($"Successfully updating the item");
+            return Ok(updated);
+        }
 
-            try
-            {
-                var updated = await _toDoItemServices.UpdateItemAsync(id, dto);
-                if (!updated) return NotFound();
-                return NoContent();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+        [HttpPatch("{id}")]
+        public async Task<ActionResult> PatchItem(int id, [FromBody] JsonPatchDocument<ToDoItemUpdateDto> patchDoc)
+        {
+            _logger.LogInformation("{Patching the item");
+            var updated = await _toDoItemServices.PatchItemAsync(id, patchDoc);
+            _logger.LogInformation($"Patching updating the item");
+            return Ok(updated);
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteItem(int id)
         {
             var deleted = await _toDoItemServices.DeleteItemAsync(id);
-            if (!deleted) return NotFound();
-            return NoContent();
+            if (!deleted)
+            {
+                throw new Exception("Item is not deleted");
+            }
+            _logger.LogInformation($"Successfully deleting the item");
+            return Ok();
         }
 
         [HttpPut("{id}/complete")]
